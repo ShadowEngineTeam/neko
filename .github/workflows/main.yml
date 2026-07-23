@@ -8,6 +8,7 @@ jobs:
   linux-build:
     name: linux
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, amd64]
         link_type: [static, dynamic]
@@ -74,6 +75,16 @@ jobs:
 
   linux-armv7-build:
     name: linux (armv7)
+    strategy:
+      fail-fast: false
+      matrix:
+        link_type: [static, dynamic]
+        include:
+          - link_type: static
+            name_suffix: -static
+            STATIC_DEPS: all
+          - link_type: dynamic
+            STATIC_DEPS: none
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
@@ -89,13 +100,21 @@ jobs:
           docker run --rm --platform linux/arm/v7 \
             -v "$PWD":/neko -w /neko \
             -e NEKO_VERSION="$NEKO_VERSION" \
+            -e STATIC_DEPS="${{ matrix.STATIC_DEPS }}" \
+            -e LINK_TYPE="${{ matrix.link_type }}" \
             debian:bookworm bash -ex -c '
               apt-get update -qqy
               DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
                 build-essential cmake ninja-build pkg-config git ca-certificates curl libgtk-3-dev
+              if [ "$LINK_TYPE" = "dynamic" ]; then
+                DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
+                  libgc-dev libpcre2-dev zlib1g-dev apache2-dev libmariadb-dev libsqlite3-dev libmbedtls-dev
+              fi
               git config --global --add safe.directory /neko
-              cmake . -DSTATIC_DEPS=all -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
-              ninja download_deps || ninja download_deps || ninja download_deps
+              cmake . -DSTATIC_DEPS=$STATIC_DEPS -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+              if [ "$LINK_TYPE" = "static" ]; then
+                ninja download_deps || ninja download_deps || ninja download_deps
+              fi
               ninja
               ldd ./bin/neko
               ldd ./bin/nekoc
@@ -109,12 +128,13 @@ jobs:
       - name: Upload binaries
         uses: actions/upload-artifact@v4
         with:
-          name: linux-static-armv7-binaries
+          name: linux${{ matrix.name_suffix }}-armv7-binaries
           path: bin/neko-${{ env.NEKO_VERSION }}-linux-armv7.tar.gz
 
   mac-build:
     name: mac
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, amd64]
         link_type: [static, dynamic]
@@ -183,6 +203,7 @@ jobs:
   windows-build:
     name: windows
     strategy:
+      fail-fast: false
       matrix:
         arch: [Win32, x64]
         include:
@@ -202,10 +223,7 @@ jobs:
           cmake . -G "Visual Studio 17 2022" -A ${{ matrix.arch }}
 
       - name: Download dependencies
-        run: |
-          cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps || \
-          cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps || \
-          cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps
+        run: cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps || cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps || cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps
 
       - name: Build
         run: cmake --build . --config $env:CMAKE_BUILD_TYPE
