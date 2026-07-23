@@ -132,6 +132,11 @@ jobs:
           sudo chroot rootfs linux32 env NEKO_VERSION="$NEKO_VERSION" bash -ex -c '
             cd /neko
             git config --global --add safe.directory /neko
+            # OpenSSL configures its armv7 target with -march=armv7-a, which
+            # drops the FPU while the armhf toolchain keeps -mfloat-abi=hard.
+            # Add the Debian armhf baseline FPU so the two are consistent.
+            export CFLAGS="-mfpu=vfpv3-d16"
+            export CXXFLAGS="-mfpu=vfpv3-d16"
             # WITH_APACHE=OFF: the Apache modules pull in APR, whose autotools
             # configure fails building from source under qemu on armv7. The
             # modules are a niche component and are dropped on this platform.
