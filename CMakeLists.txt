@@ -738,6 +738,8 @@ endif()
 
 if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
 	set(arch_suffix "-arm64")
+elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm")
+	set(arch_suffix "-armv7")
 else()
 	set(arch_suffix ${arch_64})
 endif()

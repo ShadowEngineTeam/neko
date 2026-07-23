@@ -27,7 +27,7 @@ Function Copy-File {
 $file32 = "neko-$version-win.zip"
 $file64 = "neko-$version-win64.zip"
 
-ForEach ($file in @(".\windows-vs2017-binaries\$file32", ".\windows64-vs2017-binaries\$file64")) {
+ForEach ($file in @(".\windows-binaries\$file32", ".\windows64-binaries\$file64")) {
 	If ( ! (Test-Path -Path $file -PathType Leaf) ) {
 		Write-Error "File $file missing"
 		Exit 2
