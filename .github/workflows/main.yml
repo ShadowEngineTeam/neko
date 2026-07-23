@@ -119,7 +119,7 @@ jobs:
         run: |
           set -ex
           sudo chroot rootfs env DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
-            libgc-dev libpcre2-dev zlib1g-dev apache2-dev libmariadb-dev libsqlite3-dev libmbedtls-dev
+            libgc-dev libpcre2-dev zlib1g-dev libmariadb-dev libsqlite3-dev libmbedtls-dev
 
       - name: Build
         run: |
@@ -132,7 +132,10 @@ jobs:
           sudo chroot rootfs linux32 env NEKO_VERSION="$NEKO_VERSION" bash -ex -c '
             cd /neko
             git config --global --add safe.directory /neko
-            cmake . -DSTATIC_DEPS=${{ matrix.STATIC_DEPS }} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            # WITH_APACHE=OFF: the Apache modules pull in APR, whose autotools
+            # configure fails building from source under qemu on armv7. The
+            # modules are a niche component and are dropped on this platform.
+            cmake . -DSTATIC_DEPS=${{ matrix.STATIC_DEPS }} -DWITH_APACHE=OFF -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
             if [ "${{ matrix.link_type }}" = "static" ]; then
               ninja download_deps || ninja download_deps || ninja download_deps
             fi

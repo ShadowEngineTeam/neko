@@ -102,6 +102,10 @@ if (STATIC_MARIADBCONNECTOR)
 		URL_HASH SHA256=58876fad1c2d33979d78bbfa61d7a3476e8faa2cd0af0f7f8bfeb06deaa1034e
 		CMAKE_ARGS
 			-Wno-dev
+			# Don't let the connector force -Werror: newer clang (e.g. on the
+			# macos-26 runners) warns building ma_tls.c, which would otherwise
+			# fail the build. Defining this variable disables its -Werror block.
+			-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF
 			-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
 			-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
 			-DWITH_SSL=OPENSSL
