@@ -327,37 +327,3 @@ jobs:
         with:
           name: mac-static-universal-binaries
           path: neko-*-osx-universal.tar.gz
-
-  release:
-    name: release
-    needs: [linux-build, linux-armv7-build, mac-build, mac-universal, windows-build]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      # Static builds are one self-contained archive per platform (linux
-      # x64/arm64/armv7, macOS x64/arm64/universal) plus the Windows zips.
-      - name: Download static build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: "*-static-*-binaries"
-
-      - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: "windows*-binaries"
-
-      - name: Collect release assets
-        run: |
-          set -ex
-          mkdir -p release
-          find artifacts -type f \( -name 'neko-*.tar.gz' -o -name 'neko-*.zip' \) \
-            -exec cp {} release/ \;
-          ls -l release
-
-      - name: Upload assets to the ${{ env.NEKO_VERSION }} release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload v2-4-1 release/* --clobber --repo "$GITHUB_REPOSITORY"
