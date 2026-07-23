@@ -85,45 +85,54 @@ jobs:
             STATIC_DEPS: all
           - link_type: dynamic
             STATIC_DEPS: none
-    runs-on: ubuntu-22.04
+    # Build on the native arm64 runner. armv7 (32-bit armhf) binaries are
+    # produced in an armhf root set up with debootstrap and entered with
+    # chroot; qemu-user-static (registered via binfmt) runs the armhf build
+    # tools. No Docker, no nested container.
+    runs-on: ubuntu-22.04-arm
+    env:
+      DEBIAN_FRONTEND: noninteractive
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm
-
-      - name: Build in armv7 container
+      - name: Set up armhf build root
         run: |
-          docker run --rm --platform linux/arm/v7 \
-            -v "$PWD":/neko -w /neko \
-            -e NEKO_VERSION="$NEKO_VERSION" \
-            -e STATIC_DEPS="${{ matrix.STATIC_DEPS }}" \
-            -e LINK_TYPE="${{ matrix.link_type }}" \
-            debian:bookworm bash -ex -c '
-              apt-get update -qqy
-              DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
-                build-essential cmake ninja-build pkg-config git ca-certificates curl libgtk-3-dev
-              if [ "$LINK_TYPE" = "dynamic" ]; then
-                DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
-                  libgc-dev libpcre2-dev zlib1g-dev apache2-dev libmariadb-dev libsqlite3-dev libmbedtls-dev
-              fi
-              git config --global --add safe.directory /neko
-              cmake . -DSTATIC_DEPS=$STATIC_DEPS -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
-              if [ "$LINK_TYPE" = "static" ]; then
-                ninja download_deps || ninja download_deps || ninja download_deps
-              fi
-              ninja
-              ldd ./bin/neko
-              ldd ./bin/nekoc
-              ldd ./bin/nekoml
-              ldd ./bin/nekotools
-              ctest --verbose
-              ninja package
-              [ "$(./bin/neko -version)" = "$NEKO_VERSION" ]
-            '
+          set -ex
+          sudo apt-get update -qqy
+          sudo apt-get install -qqy qemu-user-static binfmt-support debootstrap
+          sudo debootstrap --arch=armhf --variant=buildd \
+            --include=build-essential,cmake,ninja-build,pkg-config,git,ca-certificates,curl,libgtk-3-dev \
+            bookworm rootfs http://deb.debian.org/debian
+
+      - name: Install dynamic dependencies
+        if: ${{ matrix.link_type == 'dynamic' }}
+        run: |
+          set -ex
+          sudo chroot rootfs apt-get install -qqy \
+            libgc-dev libpcre2-dev zlib1g-dev apache2-dev libmariadb-dev libsqlite3-dev libmbedtls-dev
+
+      - name: Build
+        run: |
+          set -ex
+          sudo mkdir -p rootfs/neko
+          sudo mount --bind "$PWD" rootfs/neko
+          sudo chroot rootfs env NEKO_VERSION="$NEKO_VERSION" bash -ex -c '
+            cd /neko
+            git config --global --add safe.directory /neko
+            cmake . -DSTATIC_DEPS=${{ matrix.STATIC_DEPS }} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+            if [ "${{ matrix.link_type }}" = "static" ]; then
+              ninja download_deps || ninja download_deps || ninja download_deps
+            fi
+            ninja
+            ldd ./bin/neko
+            ldd ./bin/nekoc
+            ldd ./bin/nekoml
+            ldd ./bin/nekotools
+            ctest --verbose
+            ninja package
+            [ "$(./bin/neko -version)" = "$NEKO_VERSION" ]
+          '
 
       - name: Upload binaries
         uses: actions/upload-artifact@v4
