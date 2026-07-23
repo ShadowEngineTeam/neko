@@ -101,15 +101,24 @@ jobs:
           set -ex
           sudo apt-get update -qqy
           sudo apt-get install -qqy qemu-user-static binfmt-support debootstrap
+          # Minimal bootstrap; heavier packages (with maintainer scripts that
+          # misbehave in debootstrap's second stage under emulation) are
+          # installed below inside the chroot with /proc, /sys, /dev mounted.
           sudo debootstrap --arch=armhf --variant=buildd \
-            --include=build-essential,cmake,ninja-build,pkg-config,git,ca-certificates,curl,libgtk-3-dev \
             bookworm rootfs http://deb.debian.org/debian
+          sudo mount -t proc none rootfs/proc
+          sudo mount -t sysfs none rootfs/sys
+          sudo mount --bind /dev rootfs/dev
+          sudo mount --bind /dev/pts rootfs/dev/pts
+          sudo chroot rootfs env DEBIAN_FRONTEND=noninteractive apt-get update -qqy
+          sudo chroot rootfs env DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
+            build-essential cmake ninja-build pkg-config git ca-certificates curl libgtk-3-dev
 
       - name: Install dynamic dependencies
         if: ${{ matrix.link_type == 'dynamic' }}
         run: |
           set -ex
-          sudo chroot rootfs apt-get install -qqy \
+          sudo chroot rootfs env DEBIAN_FRONTEND=noninteractive apt-get install -qqy \
             libgc-dev libpcre2-dev zlib1g-dev apache2-dev libmariadb-dev libsqlite3-dev libmbedtls-dev
 
       - name: Build
