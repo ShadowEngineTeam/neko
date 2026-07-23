@@ -261,6 +261,12 @@ add_executable(nekovm
 	vm/main.c
 )
 
+# Windows on ARM64 needs a newer Boehm GC: 7.6.16 only supports x86/x64 there
+# (its win32_threads.c reads x86-64-only CONTEXT registers).
+if (WIN32 AND (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
+	set(NEKO_WIN_ARM64 TRUE)
+endif()
+
 # We need to build from source on Windows regardless
 if (STATIC_BOEHMGC OR WIN32)
 	ExternalProject_Add(libatomic_ops
@@ -273,18 +279,30 @@ if (STATIC_BOEHMGC OR WIN32)
 	)
 	set_target_properties(libatomic_ops PROPERTIES ${EP_PROPS})
 
-	set (
-		BoehmGC_CONFIGS
-		DEPENDS libatomic_ops
-		URL https://github.com/ivmai/bdwgc/releases/download/v7.6.16/gc-7.6.16.tar.gz
-		URL_MD5 74fb76b6bccf0874cec65b794535a7dd
-	)
+	if (NEKO_WIN_ARM64)
+		# 8.2.x adds Windows/ARM64 support. Its CMake build names the shared
+		# library "gc" (gc.dll / gc.lib) instead of 7.6.16's "gcmt-dll".
+		set (
+			BoehmGC_CONFIGS
+			DEPENDS libatomic_ops
+			URL https://github.com/ivmai/bdwgc/releases/download/v8.2.8/gc-8.2.8.tar.gz
+		)
+		set(GC_DLL_NAME gc)
+	else()
+		set (
+			BoehmGC_CONFIGS
+			DEPENDS libatomic_ops
+			URL https://github.com/ivmai/bdwgc/releases/download/v7.6.16/gc-7.6.16.tar.gz
+			URL_MD5 74fb76b6bccf0874cec65b794535a7dd
+		)
+		set(GC_DLL_NAME gcmt-dll)
+	endif()
 
 	set(GC_INCLUDE_DIR ${CMAKE_BINARY_DIR}/libs/src/BoehmGC-build/include)
 
 	if (WIN32)
 		set(GC_LIBRARIES
-			${CMAKE_BINARY_DIR}/libs/src/BoehmGC-build/${CMAKE_CFG_INTDIR}/gcmt-dll.lib
+			${CMAKE_BINARY_DIR}/libs/src/BoehmGC-build/${CMAKE_CFG_INTDIR}/${GC_DLL_NAME}.lib
 		)
 		ExternalProject_Add(BoehmGC
 			${EP_CONFIGS}
@@ -301,14 +319,14 @@ if (STATIC_BOEHMGC OR WIN32)
 					${CMAKE_BINARY_DIR}/libs/src/BoehmGC/include
 					${CMAKE_BINARY_DIR}/libs/src/BoehmGC-build/include/gc
 		)
-		add_custom_command(OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gcmt-dll.dll
+		add_custom_command(OUTPUT ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${GC_DLL_NAME}.dll
 			DEPENDS BoehmGC
-			COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libs/src/BoehmGC-build/${CMAKE_CFG_INTDIR}/gcmt-dll.dll ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+			COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/libs/src/BoehmGC-build/${CMAKE_CFG_INTDIR}/${GC_DLL_NAME}.dll ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 		)
-		add_custom_target(gcmt-dll.dll ALL
-			DEPENDS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gcmt-dll.dll
+		add_custom_target(${GC_DLL_NAME}.dll ALL
+			DEPENDS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${GC_DLL_NAME}.dll
 		)
-		add_dependencies(nekovm gcmt-dll.dll)
+		add_dependencies(nekovm ${GC_DLL_NAME}.dll)
 	else()
 		if (APPLE)
 			set(GC_CFLAGS "-w -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
@@ -573,7 +591,7 @@ if (WIN32)
 	include(InstallRequiredSystemLibraries)
 	install (
 		FILES
-			${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/gcmt-dll.dll
+			${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${GC_DLL_NAME}.dll
 		DESTINATION .
 	)
 else()
@@ -736,7 +754,7 @@ else()
 	set(OS_NAME "")
 endif()
 
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
+if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "arm64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64" OR ${CMAKE_SYSTEM_PROCESSOR} STREQUAL "ARM64")
 	set(arch_suffix "-arm64")
 elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "^arm")
 	set(arch_suffix "-armv7")

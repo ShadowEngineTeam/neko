@@ -238,17 +238,22 @@ jobs:
         include:
           - arch: x86
             cmake_arch: Win32
+            runner: windows-2022
           - arch: x64
             cmake_arch: x64
             name_suffix: 64
+            runner: windows-2022
           - arch: arm64
             cmake_arch: ARM64
-            name_suffix: arm64
+            name_suffix: -arm64
+            # Native ARM64 runner: the build runs the freshly-built neko.exe to
+            # bootstrap the compilers, which an x64 host can't execute.
+            runner: windows-11-arm
 
     env:
       CMAKE_BUILD_TYPE: RelWithDebInfo
 
-    runs-on: windows-2022
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
