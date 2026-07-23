@@ -241,6 +241,9 @@ jobs:
           - arch: x64
             cmake_arch: x64
             name_suffix: 64
+          - arch: arm64
+            cmake_arch: ARM64
+            name_suffix: arm64
 
     env:
       CMAKE_BUILD_TYPE: RelWithDebInfo
