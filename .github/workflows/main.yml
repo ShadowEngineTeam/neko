@@ -126,7 +126,10 @@ jobs:
           set -ex
           sudo mkdir -p rootfs/neko
           sudo mount --bind "$PWD" rootfs/neko
-          sudo chroot rootfs env NEKO_VERSION="$NEKO_VERSION" bash -ex -c '
+          # linux32 sets a 32-bit personality so uname reports an armv* machine
+          # instead of the aarch64 host; without it, autotools-based dependency
+          # configure scripts (APR, etc.) misdetect the target as aarch64.
+          sudo chroot rootfs linux32 env NEKO_VERSION="$NEKO_VERSION" bash -ex -c '
             cd /neko
             git config --global --add safe.directory /neko
             cmake . -DSTATIC_DEPS=${{ matrix.STATIC_DEPS }} -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
