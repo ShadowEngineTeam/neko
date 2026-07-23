@@ -9,6 +9,10 @@ if (STATIC_MBEDTLS)
 		-Wno-dev
 		-DENABLE_PROGRAMS=OFF
 		-DENABLE_TESTING=OFF
+		# Don't treat compiler warnings as errors: newer clang (e.g. on the
+		# macos-26 runners) warns on mbedTLS 3.6.0's exact-fit TLS 1.3 label
+		# strings, which -Werror would turn into a build failure.
+		-DMBEDTLS_FATAL_WARNINGS=OFF
 		-DUSE_STATIC_MBEDTLS_LIBRARY=ON
 		-DMBEDTLS_USER_CONFIG_FILE=${CMAKE_CURRENT_SOURCE_DIR}/mbedtls_config.h
 	)
