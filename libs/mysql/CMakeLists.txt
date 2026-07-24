@@ -50,10 +50,21 @@ if (STATIC_OPENSSL)
 			${CMAKE_BINARY_DIR}/libs/src/install-prefix/lib/libcrypto.a
 		)
 	endif()
+	if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+		# 3.0.8's rsa_sup_mul.c uses the x64-only _umul128 intrinsic on ARM64
+		# (unresolved at link). Fixed later in the 3.0 LTS line.
+		set(OPENSSL_URL_ARGS
+			URL https://github.com/openssl/openssl/releases/download/openssl-3.0.16/openssl-3.0.16.tar.gz
+		)
+	else()
+		set(OPENSSL_URL_ARGS
+			URL https://www.openssl.org/source/openssl-3.0.8.tar.gz
+			URL_HASH SHA256=6c13d2bf38fdf31eac3ce2a347073673f5d63263398f1f69d0df4a41253e4b3e
+		)
+	endif()
 	ExternalProject_Add(OpenSSL
 		${EP_CONFIGS}
-		URL https://www.openssl.org/source/openssl-3.0.8.tar.gz
-		URL_HASH SHA256=6c13d2bf38fdf31eac3ce2a347073673f5d63263398f1f69d0df4a41253e4b3e
+		${OPENSSL_URL_ARGS}
 		${OPENSSL_CONFIGS}
 		BYPRODUCTS ${OPENSSL_LIBRARIES}
 		SOURCE_DIR ${CMAKE_BINARY_DIR}/libs/src/openssl
