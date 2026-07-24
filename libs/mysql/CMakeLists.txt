@@ -7,8 +7,6 @@ if (STATIC_OPENSSL)
 		# perl is needed to run the openssl Configure script...
 		find_package(Perl REQUIRED)
 		if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
-			# x64 target would emit x64-only intrinsics (e.g. _umul128) that
-			# don't link on ARM64; use OpenSSL's dedicated ARM64 target.
 			set(openssl_target VC-WIN64-ARM)
 		elseif (arch_64)
 			set(openssl_target VC-WIN64A)
@@ -106,9 +104,6 @@ if (STATIC_MARIADBCONNECTOR)
 		URL_HASH SHA256=58876fad1c2d33979d78bbfa61d7a3476e8faa2cd0af0f7f8bfeb06deaa1034e
 		CMAKE_ARGS
 			-Wno-dev
-			# Don't let the connector force -Werror: newer clang (e.g. on the
-			# macos-26 runners) warns building ma_tls.c, which would otherwise
-			# fail the build. Defining this variable disables its -Werror block.
 			-DCMAKE_COMPILE_WARNING_AS_ERROR=OFF
 			-DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
 			-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}

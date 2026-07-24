@@ -261,8 +261,6 @@ add_executable(nekovm
 	vm/main.c
 )
 
-# Windows on ARM64 needs a newer Boehm GC: 7.6.16 only supports x86/x64 there
-# (its win32_threads.c reads x86-64-only CONTEXT registers).
 if (WIN32 AND (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64"))
 	set(NEKO_WIN_ARM64 TRUE)
 endif()
@@ -280,8 +278,6 @@ if (STATIC_BOEHMGC OR WIN32)
 	set_target_properties(libatomic_ops PROPERTIES ${EP_PROPS})
 
 	if (NEKO_WIN_ARM64)
-		# 8.2.x adds Windows/ARM64 support. Its CMake build names the shared
-		# library "gc" (gc.dll / gc.lib) instead of 7.6.16's "gcmt-dll".
 		set (
 			BoehmGC_CONFIGS
 			DEPENDS libatomic_ops

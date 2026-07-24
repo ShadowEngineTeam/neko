@@ -85,10 +85,6 @@ jobs:
             STATIC_DEPS: all
           - link_type: dynamic
             STATIC_DEPS: none
-    # Build on the native arm64 runner. armv7 (32-bit armhf) binaries are
-    # produced in an armhf root set up with debootstrap and entered with
-    # chroot; qemu-user-static (registered via binfmt) runs the armhf build
-    # tools. No Docker, no nested container.
     runs-on: ubuntu-22.04-arm
     env:
       DEBIAN_FRONTEND: noninteractive
@@ -101,9 +97,6 @@ jobs:
           set -ex
           sudo apt-get update -qqy
           sudo apt-get install -qqy qemu-user-static binfmt-support debootstrap
-          # Minimal bootstrap; heavier packages (with maintainer scripts that
-          # misbehave in debootstrap's second stage under emulation) are
-          # installed below inside the chroot with /proc, /sys, /dev mounted.
           sudo debootstrap --arch=armhf --variant=buildd \
             bookworm rootfs http://deb.debian.org/debian
           sudo mount -t proc none rootfs/proc
@@ -126,20 +119,11 @@ jobs:
           set -ex
           sudo mkdir -p rootfs/neko
           sudo mount --bind "$PWD" rootfs/neko
-          # linux32 sets a 32-bit personality so uname reports an armv* machine
-          # instead of the aarch64 host; without it, autotools-based dependency
-          # configure scripts (APR, etc.) misdetect the target as aarch64.
           sudo chroot rootfs linux32 env NEKO_VERSION="$NEKO_VERSION" bash -ex -c '
             cd /neko
             git config --global --add safe.directory /neko
-            # OpenSSL configures its armv7 target with -march=armv7-a, which
-            # drops the FPU while the armhf toolchain keeps -mfloat-abi=hard.
-            # Add the Debian armhf baseline FPU so the two are consistent.
             export CFLAGS="-mfpu=vfpv3-d16"
             export CXXFLAGS="-mfpu=vfpv3-d16"
-            # WITH_APACHE=OFF: the Apache modules pull in APR, whose autotools
-            # configure fails building from source under qemu on armv7. The
-            # modules are a niche component and are dropped on this platform.
             cmake . -DSTATIC_DEPS=${{ matrix.STATIC_DEPS }} -DWITH_APACHE=OFF -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
             if [ "${{ matrix.link_type }}" = "static" ]; then
               ninja download_deps || ninja download_deps || ninja download_deps
@@ -246,8 +230,6 @@ jobs:
           - arch: arm64
             cmake_arch: ARM64
             name_suffix: -arm64
-            # Native ARM64 runner: the build runs the freshly-built neko.exe to
-            # bootstrap the compilers, which an x64 host can't execute.
             runner: windows-11-arm
 
     env:
@@ -257,10 +239,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      # The windows-11-arm runner ships a newer CMake that rejects the ancient
-      # cmake_minimum_required in some deps (APR, expat). Set the compatibility
-      # floor as an env var so it also reaches the ExternalProject sub-builds.
       - name: Allow legacy deps under newer CMake (ARM64)
         if: ${{ matrix.arch == 'arm64' }}
         run: echo "CMAKE_POLICY_VERSION_MINIMUM=3.5" >> $env:GITHUB_ENV
