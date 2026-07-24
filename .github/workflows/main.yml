@@ -231,6 +231,11 @@ jobs:
             cmake_arch: ARM64
             name_suffix: -arm64
             runner: windows-11-arm
+            # Apache httpd's old CMakeLists can't configure under this runner's
+            # newer CMake (it reads the removed LOCATION property), and its APR
+            # deps need a >=3.5 policy floor that makes that read a hard error.
+            # Drop the niche Apache modules on this platform, as on armv7.
+            extra_cmake: -DWITH_APACHE=OFF
 
     env:
       CMAKE_BUILD_TYPE: RelWithDebInfo
@@ -245,7 +250,7 @@ jobs:
 
       - name: CMake
         run: |
-          cmake . -G "Visual Studio 17 2022" -A ${{ matrix.cmake_arch }}
+          cmake . -G "Visual Studio 17 2022" -A ${{ matrix.cmake_arch }} ${{ matrix.extra_cmake }}
 
       - name: Download dependencies
         run: cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps || cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps || cmake --build . --config $env:CMAKE_BUILD_TYPE --target download_deps
