@@ -156,10 +156,6 @@ jobs:
             STATIC_DEPS: all
           - link_type: dynamic
             STATIC_DEPS: none
-    # 32-bit x86 (i386) binaries are built in an i386 root set up with
-    # debootstrap and entered with chroot. An x86-64 host runs i386 binaries
-    # natively, so no emulation is needed; linux32 sets a 32-bit personality
-    # so uname reports i686 for correct dep/package arch detection.
     runs-on: ubuntu-22.04
     env:
       DEBIAN_FRONTEND: noninteractive
