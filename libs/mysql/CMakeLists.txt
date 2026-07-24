@@ -51,8 +51,6 @@ if (STATIC_OPENSSL)
 		)
 	endif()
 	if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
-		# 3.0.8's rsa_sup_mul.c uses the x64-only _umul128 intrinsic on ARM64
-		# (unresolved at link). Fixed later in the 3.0 LTS line.
 		set(OPENSSL_URL_ARGS
 			URL https://github.com/openssl/openssl/releases/download/openssl-3.0.16/openssl-3.0.16.tar.gz
 		)
