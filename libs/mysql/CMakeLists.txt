@@ -6,7 +6,11 @@ if (STATIC_OPENSSL)
 	if (WIN32)
 		# perl is needed to run the openssl Configure script...
 		find_package(Perl REQUIRED)
-		if (arch_64)
+		if (CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64" OR CMAKE_SYSTEM_PROCESSOR STREQUAL "ARM64")
+			# x64 target would emit x64-only intrinsics (e.g. _umul128) that
+			# don't link on ARM64; use OpenSSL's dedicated ARM64 target.
+			set(openssl_target VC-WIN64-ARM)
+		elseif (arch_64)
 			set(openssl_target VC-WIN64A)
 		else()
 			set(openssl_target VC-WIN32)
