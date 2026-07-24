@@ -258,6 +258,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # The windows-11-arm runner ships a newer CMake that rejects the ancient
+      # cmake_minimum_required in some deps (APR, expat). Set the compatibility
+      # floor as an env var so it also reaches the ExternalProject sub-builds.
+      - name: Allow legacy deps under newer CMake (ARM64)
+        if: ${{ matrix.arch == 'arm64' }}
+        run: echo "CMAKE_POLICY_VERSION_MINIMUM=3.5" >> $env:GITHUB_ENV
+
       - name: CMake
         run: |
           cmake . -G "Visual Studio 17 2022" -A ${{ matrix.cmake_arch }}
